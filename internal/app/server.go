@@ -73,6 +73,9 @@ func NewServer(ctx context.Context, config ServerConfig, store *Store) (*Server,
 	if config.Issuer == "" || config.ClientID == "" || config.ClientSecret == "" {
 		return nil, errors.New("OIDC-Konfiguration ist unvollständig")
 	}
+	if strings.HasSuffix(strings.TrimRight(config.Issuer, "/"), "/.well-known/openid-configuration") {
+		return nil, errors.New("OIDC_ISSUER muss die Issuer-URL sein, nicht die Discovery-URL mit /.well-known/openid-configuration")
+	}
 	provider, err := oidc.NewProvider(ctx, config.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("OIDC Discovery fehlgeschlagen: %w", err)
