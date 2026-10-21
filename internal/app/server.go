@@ -73,6 +73,9 @@ func NewServer(ctx context.Context, config ServerConfig, store *Store) (*Server,
 	if config.Issuer == "" || config.ClientID == "" || config.ClientSecret == "" {
 		return nil, errors.New("OIDC-Konfiguration ist unvollständig")
 	}
+	if strings.HasSuffix(strings.TrimRight(config.Issuer, "/"), "/.well-known/openid-configuration") {
+		return nil, errors.New("OIDC_ISSUER muss die Issuer-URL sein, nicht die Discovery-URL mit /.well-known/openid-configuration")
+	}
 	provider, err := oidc.NewProvider(ctx, config.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("OIDC Discovery fehlgeschlagen: %w", err)
@@ -80,7 +83,7 @@ func NewServer(ctx context.Context, config ServerConfig, store *Store) (*Server,
 	s := &Server{config: config, store: store, runner: NewRunner(store), verifier: provider.Verifier(&oidc.Config{ClientID: config.ClientID}),
 		sessions: make(map[string]session), pending: make(map[string]pendingLogin)}
 	s.oauth = oauth2.Config{ClientID: config.ClientID, ClientSecret: config.ClientSecret, Endpoint: provider.Endpoint(),
-		RedirectURL: strings.TrimRight(config.PublicURL, "/") + "/callback", Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}
+		RedirectURL: strings.TrimRight(config.PublicURL, "/") + "/callback", Scopes: []string{oidc.ScopeOpenID, "profile", "email", "groups"}}
 	if err := s.reloadSchedule(); err != nil {
 		return nil, err
 	}

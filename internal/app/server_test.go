@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -9,6 +11,55 @@ import (
 	"testing"
 	"time"
 )
+
+func TestNewServerRejectsDiscoveryURLAsIssuer(t *testing.T) {
+	_, err := NewServer(context.Background(), ServerConfig{
+		PublicURL: "https://validator.example.invalid",
+		Issuer:    "https://sso.example.invalid/oidc/.well-known/openid-configuration/",
+		ClientID:  "example-client", ClientSecret: "example-secret",
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "OIDC_ISSUER muss die Issuer-URL sein") {
+		t.Fatalf("unexpected issuer validation error: %v", err)
+	}
+}
+
+func TestLoginRequestsGroupsScope(t *testing.T) {
+	var issuer string
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q,"jwks_uri":%q}`,
+			issuer, issuer+"/authorize", issuer+"/token", issuer+"/keys")
+	}))
+	defer provider.Close()
+	issuer = provider.URL
+
+	store, err := OpenStore(filepath.Join(t.TempDir(), "state.db"), testKey())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	s, err := NewServer(context.Background(), ServerConfig{
+		PublicURL: "https://validator.example.invalid", Issuer: issuer,
+		ClientID: "client", ClientSecret: "secret",
+	}, store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	response := httptest.NewRecorder()
+	s.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/login", nil))
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("login response: %d", response.Code)
+	}
+	redirect, err := url.Parse(response.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(" "+redirect.Query().Get("scope")+" ", " groups ") {
+		t.Fatalf("login does not request groups scope: %q", redirect.Query().Get("scope"))
+	}
+}
 
 func TestPublicHTTPRequiresSessionAndAdmin(t *testing.T) {
 	store, err := OpenStore(filepath.Join(t.TempDir(), "state.db"), testKey())
