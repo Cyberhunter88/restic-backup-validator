@@ -46,14 +46,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish versioned image
+      - name: Build and publish versioned and latest images
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/cyberhunter88/restic-backup-validator:${{ inputs.version }}
+          tags: |
+            ghcr.io/cyberhunter88/restic-backup-validator:${{ inputs.version }}
+            ghcr.io/cyberhunter88/restic-backup-validator:latest
           provenance: true
       - name: Verify published image
         env:
@@ -61,11 +63,15 @@ jobs:
           EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -euo pipefail
-          image="ghcr.io/cyberhunter88/restic-backup-validator:$VERSION"
-          docker buildx imagetools inspect --raw "$image" > /tmp/image-index.json
+          versioned_image="ghcr.io/cyberhunter88/restic-backup-validator:$VERSION"
+          latest_image="ghcr.io/cyberhunter88/restic-backup-validator:latest"
+          docker buildx imagetools inspect --raw "$versioned_image" > /tmp/image-index.json
           jq -e '[.manifests[] | select(.platform.os == "linux") | .platform.architecture] | (index("amd64") != null and index("arm64") != null)' /tmp/image-index.json
-          actual="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
-          test "$actual" = "$EXPECTED_DIGEST"
+          test -n "$EXPECTED_DIGEST"
+          for image in "$versioned_image" "$latest_image"; do
+            actual="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
+            test "$actual" = "$EXPECTED_DIGEST"
+          done
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
