@@ -15,8 +15,8 @@ import (
 func TestNewServerRejectsDiscoveryURLAsIssuer(t *testing.T) {
 	_, err := NewServer(context.Background(), ServerConfig{
 		PublicURL: "https://validator.example.invalid",
-		Issuer: "https://sso.example.invalid/oidc/.well-known/openid-configuration/",
-		ClientID: "example-client", ClientSecret: "example-secret",
+		Issuer:    "https://sso.example.invalid/oidc/.well-known/openid-configuration/",
+		ClientID:  "example-client", ClientSecret: "example-secret",
 	}, nil)
 	if err == nil || !strings.Contains(err.Error(), "OIDC_ISSUER muss die Issuer-URL sein") {
 		t.Fatalf("unexpected issuer validation error: %v", err)
