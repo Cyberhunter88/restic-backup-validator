@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+data
+tmp
+test-repos
+*.db*
+*.sqlite*
+*.pem
+*.key
+*.p12
+*.pfx
+coverage.out
+dist

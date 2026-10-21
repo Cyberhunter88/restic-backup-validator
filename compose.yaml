@@ -1,0 +1,29 @@
+services:
+  validator:
+    build: .
+    image: restic-backup-validator:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_DB_PATH: /data/validator.db
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - validator-data:/data
+      # restic check creates repository locks; a local repository needs a writable mount:
+      # - /srv/restic:/repositories:rw
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  validator-data:
