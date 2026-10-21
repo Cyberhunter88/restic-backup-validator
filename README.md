@@ -33,7 +33,7 @@ Die rotierende Datenprüfung verwendet `--read-data-subset=n/t` und erhöht `n` 
 
 ## Schutz und Wiederherstellung
 
-`APP_MASTER_KEY` ist ein Base64-kodierter 32-Byte-Schlüssel. Die App verschlüsselt Secrets mit AES-256-GCM. Die `.env` liegt getrennt von SQLite und muss mit restriktiven Host-Dateirechten geschützt werden. Sie ist kein Schutz gegen einen Angreifer mit Docker- oder Host-Admin-Rechten. Die Datenbank und **genau der dazugehörige Schlüssel** müssen getrennt gesichert werden; ohne Schlüssel können die gespeicherten Zugangsdaten nicht wiederhergestellt werden. Ein Schlüsselwechsel erfordert eine geplante Migration und ist in Version 1.0 nicht als Web-Aktion verfügbar.
+`APP_MASTER_KEY` ist ein Base64-kodierter 32-Byte-Schlüssel. Die App verschlüsselt Secrets mit AES-256-GCM und verweigert beim Start einen Schlüssel, der nicht zur bestehenden Datenbank passt. Die `.env` liegt getrennt von SQLite und muss mit restriktiven Host-Dateirechten geschützt werden. Sie ist kein Schutz gegen einen Angreifer mit Docker- oder Host-Admin-Rechten. Die Datenbank und **genau der dazugehörige Schlüssel** müssen getrennt gesichert werden; ohne Schlüssel können die gespeicherten Zugangsdaten nicht wiederhergestellt werden. Ein Schlüsselwechsel erfordert eine geplante Migration und ist in Version 1.0 nicht als Web-Aktion verfügbar.
 
 Die Datenbank liegt im Volume `validator-data`. Ein Backup sollte bei gestopptem Container oder mit der SQLite-Backup-API erstellt werden. Die Web-App setzt sichere Cookies, CSRF-Schutz und Sicherheitsheader. Der Reverse Proxy muss HTTPS bereitstellen und darf den App-Port nicht öffentlich freigeben. Der OIDC-Provider sollte MFA verlangen. Die Health-Route `/healthz` gibt keine Repository-Daten aus.
 

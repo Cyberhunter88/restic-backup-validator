@@ -51,12 +51,9 @@ func TestStoreEncryptsSecretsAndRejectsWrongKey(t *testing.T) {
 	}
 	wrong := base64.StdEncoding.EncodeToString([]byte("abcdefghijklmnopqrstuvwxyz123456"))
 	s, err = OpenStore(path, wrong)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	if _, _, err := s.RepositorySecrets(repos[0].ID); err == nil {
-		t.Fatal("wrong key accepted")
+	if err == nil {
+		_ = s.Close()
+		t.Fatal("wrong key accepted at startup")
 	}
 }
 

@@ -26,6 +26,7 @@ test('scanner accepts placeholders, masks new leaks, and checks history', () => 
     const synthetic = 'ghp_' + 'A'.repeat(36);
     writeFileSync(join(root, 'leak.txt'), `token=${synthetic}\n`);
     git('add', 'leak.txt');
+    writeFileSync(join(root, 'leak.txt'), 'clean working tree value\n');
     assert.throws(() => scan('--tracked'), error => {
       assert.equal(error.status, 1);
       assert.match(error.stderr, /github_token/);
@@ -33,13 +34,17 @@ test('scanner accepts placeholders, masks new leaks, and checks history', () => 
       return true;
     });
     git('commit', '-m', 'synthetic leak');
-    git('rm', 'leak.txt');
+    git('rm', '-f', 'leak.txt');
     git('commit', '-m', 'remove leak');
     assert.throws(() => scan('--history'), error => error.status === 1);
 
     writeFileSync(join(root, '.env'), 'APP_MASTER_KEY=REPLACE_WITH_KEY\n');
     git('add', '-f', '.env');
     assert.throws(() => scan('--tracked'), error => error.status === 1 && error.stderr.includes('blocked_file'));
+
+    writeFileSync(join(root, 'opaque.bin'), Buffer.from([0, 1, 2, 3]));
+    git('add', 'opaque.bin');
+    assert.throws(() => scan('--tracked'), error => error.status === 1 && error.stderr.includes('binary_file_requires_review'));
   } finally {
     rmSync(safeRoot, { recursive: true, force: true });
   }

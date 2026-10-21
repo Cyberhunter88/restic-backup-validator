@@ -30,7 +30,10 @@ function inspect(path, content, source) {
     findings.push(`${source}: ${path}: unscanned_large_file`);
     return;
   }
-  if (content.includes(0)) return;
+  if (content.includes(0)) {
+    findings.push(`${source}: ${path}: binary_file_requires_review`);
+    return;
+  }
   const lines = content.toString('utf8').split(/\r?\n/);
   lines.forEach((line, index) => {
     for (const [rule, expression] of patterns) {
@@ -59,7 +62,12 @@ const findings = [];
 try {
   if (args.has('--tracked') || args.size === 0) {
     const paths = git('ls-files', '-z').split('\0').filter(Boolean);
-    for (const path of paths) inspect(path, readFileSync(path), 'tracked');
+    for (const path of paths) {
+      inspect(path, execFileSync('git', ['show', ':' + path], { maxBuffer: 64 * 1024 * 1024 }), 'index');
+      try { inspect(path, readFileSync(path), 'working-tree'); } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
   }
   if (args.has('--history')) objects(['--all'], 'history');
   if (args.has('--outgoing')) {

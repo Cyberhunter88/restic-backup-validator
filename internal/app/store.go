@@ -70,7 +70,27 @@ func OpenStore(path, masterKey string) (*Store, error) {
 			return nil, err
 		}
 	}
-	return &Store{db: db, aead: aead}, nil
+	s := &Store{db: db, aead: aead}
+	marker, err := s.seal("restic-validator-key-v1", "settings:key-check")
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if _, err := db.Exec("INSERT OR IGNORE INTO settings(key,value) VALUES('key-check',?)", marker); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	var saved string
+	if err := db.QueryRow("SELECT value FROM settings WHERE key='key-check'").Scan(&saved); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	value, err := s.open(saved, "settings:key-check")
+	if err != nil || value != "restic-validator-key-v1" {
+		_ = db.Close()
+		return nil, errors.New("APP_MASTER_KEY passt nicht zur vorhandenen Datenbank")
+	}
+	return s, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
