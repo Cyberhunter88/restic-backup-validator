@@ -83,7 +83,7 @@ func NewServer(ctx context.Context, config ServerConfig, store *Store) (*Server,
 	s := &Server{config: config, store: store, runner: NewRunner(store), verifier: provider.Verifier(&oidc.Config{ClientID: config.ClientID}),
 		sessions: make(map[string]session), pending: make(map[string]pendingLogin)}
 	s.oauth = oauth2.Config{ClientID: config.ClientID, ClientSecret: config.ClientSecret, Endpoint: provider.Endpoint(),
-		RedirectURL: strings.TrimRight(config.PublicURL, "/") + "/callback", Scopes: []string{oidc.ScopeOpenID, "profile", "email"}}
+		RedirectURL: strings.TrimRight(config.PublicURL, "/") + "/callback", Scopes: []string{oidc.ScopeOpenID, "profile", "email", "groups"}}
 	if err := s.reloadSchedule(); err != nil {
 		return nil, err
 	}
